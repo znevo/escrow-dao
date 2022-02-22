@@ -5,27 +5,32 @@ contract Escrow {
     address payable public depositor;
     address payable public beneficiary;
     address public arbiter;
-    bool public isApproved;
+
+    enum EscrowStatus { PENDING, APPROVED, DENIED }
+    EscrowStatus public status;
 
     event Approved(uint _balance);
     event Denied(uint _balance);
 
-    constructor(address _arbiter, address payable _beneficiary) payable {
-        depositor = payable(msg.sender);
+    constructor(address payable _depositor, address _arbiter, address payable _beneficiary) payable {
+        depositor = _depositor;
         beneficiary = _beneficiary;
         arbiter = _arbiter;
     }
 
     function approve() external {
         require(msg.sender == arbiter);
-        isApproved = true;
+        status = EscrowStatus.APPROVED;
         emit Approved(address(this).balance);
         beneficiary.transfer(address(this).balance);
     }
 
     function deny() external {
         require(msg.sender == arbiter);
+        status = EscrowStatus.DENIED;
         emit Denied(address(this).balance);
-        selfdestruct(depositor);
+        depositor.transfer(address(this).balance);
     }
+
+    receive() external payable {}
 }

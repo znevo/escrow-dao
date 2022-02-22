@@ -7,6 +7,7 @@ const CHAINS = {
   rinkeby:  '0x4',
   goerli:   '0x5',
   kovan:    '0x2a',
+  hardhat:  '0x7a69',
 }
 
 class MetaMask {

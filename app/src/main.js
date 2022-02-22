@@ -11,16 +11,12 @@ Vue.use(Vuex);
 const store = new Vuex.Store({
   state: {
     contracts: [],
+    isMember: false,
   },
   mutations: {
-    initialiseStore(state) {
-      if(localStorage.getItem('store')) {
-        let store = localStorage.getItem('store');
-        this.replaceState(Object.assign(state, JSON.parse(store)));
-      }
-    },
     addContract(state, contract) {
-      state.contracts.push(contract);
+      const match = state.contracts.findIndex(match => match.address == contract.address);
+      (match == -1) && state.contracts.push(contract);
     },
     approveContract(state, address) {
       const contract = state.contracts.findIndex(contract => contract.address == address);
@@ -28,8 +24,20 @@ const store = new Vuex.Store({
     },
     denyContract(state, address) {
       const contract = state.contracts.findIndex(contract => contract.address == address);
-      state.contracts[contract].approved = -1;
-    }
+      state.contracts[contract].approved = 2;
+    },
+    updateMembership(state, isMember) {
+      state.isMember = isMember;
+    },
+    updateVotes(state, voteUpdate) {
+      console.log(voteUpdate)
+      const contract = state.contracts.findIndex(contract => contract.address == voteUpdate.address);
+      if ( contract != -1 ) {
+        voteUpdate.vote == 'yes'
+          ? (state.contracts[contract].yes = voteUpdate.votes)
+          : (state.contracts[contract].no = voteUpdate.votes);
+      }
+    },
   }
 });
 
@@ -51,12 +59,6 @@ new Vue({
   store,
   async beforeCreate() {
     await metamask.init();
-
-    this.$store.commit('initialiseStore');
-    this.$store.subscribe((mutation, state) => {
-      localStorage.setItem('store', JSON.stringify(state));
-    });
-
     this.$mount('#app');
   },
   render: h => h(App)
