@@ -7,6 +7,7 @@ import "./Escrow.sol";
 contract EscrowDAO {
     address[] public members;
     address payable[] public escrows;
+    uint public volume;
 
     enum Vote { PENDING, YES, NO }
     struct Ballot {
@@ -44,9 +45,10 @@ contract EscrowDAO {
     function createEscrow(address payable _beneficiary) external payable {
       Escrow escrowContract = new Escrow(payable(msg.sender), address(this), _beneficiary);
       address payable escrowAddress = payable(address(escrowContract));
-      escrowAddress.transfer(msg.value);
+      escrowAddress.transfer((msg.value / 10) * 9);
       escrows.push(escrowAddress);
       emit EscrowCreated(escrowAddress);
+      volume += msg.value;
     }
 
     function getEscrows() external view returns(address payable[] memory) {

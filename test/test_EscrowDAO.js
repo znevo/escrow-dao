@@ -59,17 +59,25 @@ describe("EscrowDAO", function() {
   });
 
   describe("createEscrow()", async function() {
+    let thisDao;
+
     it("should create escrow contract and emit event", async function() {
       const tx = await dao.createEscrow(addr2, { value: deposit });
       const receipt = await tx.wait();
       const emittedEscrow = receipt.events[0].args[0];
       escrow = await dao.escrows(0);
       assert.equal(escrow, emittedEscrow);
+      thisDao = dao;
     });
 
     it("should transfer initial deposit to escrow contract", async function() {
       const escrowBalance = await ethers.provider.getBalance(escrow);
-      expect(escrowBalance).to.equal(deposit);
+      expect(escrowBalance).to.equal(deposit.div(10).mul(9));
+    });
+
+    it("should take a cut of the initial deposit for the treasury", async function() {
+      const daoBalance = await ethers.provider.getBalance(thisDao.address);
+      expect(daoBalance).to.equal(deposit.div(10));
     });
   });
 

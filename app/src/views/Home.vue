@@ -53,6 +53,35 @@
           </div>
         </article>
 
+        <div class="box" v-if="stats">
+          <nav class="level">
+            <div class="level-item has-text-centered">
+              <div>
+                <p class="heading">Treasury</p>
+                <p class="title is-size-6">{{ stats.treasury }} <i class="fa-brands fa-ethereum"></i></p>
+              </div>
+            </div>
+            <div class="level-item has-text-centered">
+              <div>
+                <p class="heading">Volume</p>
+                <p class="title is-size-6">{{ stats.volume }} <i class="fa-brands fa-ethereum"></i></p>
+              </div>
+            </div>
+            <div class="level-item has-text-centered">
+              <div>
+                <p class="heading">Escrows</p>
+                <p class="title is-size-6">{{ stats.escrows }}</p>
+              </div>
+            </div>
+            <div class="level-item has-text-centered">
+              <div>
+                <p class="heading">Members</p>
+                <p class="title is-size-6">{{ stats.members }}</p>
+              </div>
+            </div>
+          </nav>
+        </div>
+
         <div class="columns">
             <div class="column">
                 <div class="box">
@@ -176,6 +205,7 @@ export default {
     return {
       dao: null,
       escrow: null,
+      stats: null,
       metamask: window.metamask,
       provider: null,
       form: {
@@ -189,12 +219,23 @@ export default {
     this.provider = new ethers.providers.Web3Provider(this.metamask.provider);
     const signer = this.provider.getSigner();
 
-    this.dao = new ethers.Contract('0x9261a8BB592C1B98bBe13A2e594470D6998950fa', EscrowDAO.abi, signer);
+    this.dao = new ethers.Contract('0xE0e633D1a78Cf59b10Adf01d64FBA7A365A2Ea97', EscrowDAO.abi, signer);
     this.dao = this.dao.connect(signer);
     window.dao = this.dao;
 
+    this.escrow = new ethers.ContractFactory(Escrow.abi, Escrow.bytecode, signer);
+    window.escrow = this.escrow;
+
     this.checkMembership();
-    this.getEscrows();
+    const escrows = await this.getEscrows();
+    const members = await this.dao.getMembers();
+
+    this.stats = {
+      treasury: utils.formatEther(await this.provider.getBalance(this.dao.address)),
+      volume: utils.formatEther(await this.dao.volume()),
+      escrows: escrows.length,
+      members: members.length,
+    };
 
     this.dao.on('EscrowCreated', (escrow) => {
       this.getEscrow(escrow)
@@ -216,8 +257,6 @@ export default {
       }
     });
 
-    this.escrow = new ethers.ContractFactory(Escrow.abi, Escrow.bytecode, signer);
-    window.escrow = this.escrow;
   },
   computed: {
     contracts() {
@@ -287,6 +326,8 @@ export default {
       escrows.forEach(async(escrow) => {
         await this.getEscrow(escrow);
       })
+
+      return escrows;
     },
 
     async getEscrow(address) {
