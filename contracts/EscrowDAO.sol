@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.4;
 
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "hardhat/console.sol";
 import "./Escrow.sol";
 
-contract EscrowDAO {
+contract EscrowDAO is Initializable {
     address[] public members;
     address payable[] public escrows;
     mapping(address => uint) fees;
@@ -24,7 +25,7 @@ contract EscrowDAO {
     event EscrowCreated(address);
     event MemberVoted(address member, address escrow, Vote vote);
 
-    constructor() {
+    function initialize() public initializer {
         members.push(msg.sender);
     }
 

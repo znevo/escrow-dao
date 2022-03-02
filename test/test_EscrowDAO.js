@@ -1,3 +1,4 @@
+const { ethers, upgrades } = require("hardhat");
 const chai = require("chai");
 const { assert, expect } = chai;
 const { solidity } = require("ethereum-waffle");
@@ -19,7 +20,7 @@ describe("EscrowDAO", function() {
 
   beforeEach(async () => {
     const daoFactory = await ethers.getContractFactory("EscrowDAO");
-    dao = await daoFactory.deploy();
+    dao = await upgrades.deployProxy(daoFactory);
     await dao.deployed();
   });
 
