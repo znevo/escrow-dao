@@ -147,6 +147,27 @@ describe("EscrowDAO", function() {
       expect(no).to.equal(0);
     });
 
+    it("should increase arbitration attempts for members", async function() {
+      const user6 = await ethers.getSigner(5);
+      const addr6 = user6.address;
+      await dao.connect(user6).join();
+
+      const user7 = await ethers.getSigner(6);
+      const addr7 = user7.address;
+      await dao.connect(user7).join();
+
+      await dao.connect(user3).voteYes(escrow);
+      await dao.connect(user4).voteYes(escrow);
+      await dao.connect(user5).voteYes(escrow);
+
+      assert.equal(parseInt(await dao.attempts(addr3)), 1);
+      assert.equal(parseInt(await dao.attempts(addr4)), 1);
+      assert.equal(parseInt(await dao.attempts(addr5)), 1);
+      assert.equal(parseInt(await dao.attempts(addr6)), 0);
+      assert.equal(parseInt(await dao.attempts(addr7)), 0);
+    });
+
+
     it("should approve escrow after 3 yes votes", async function() {
       await dao.connect(user3).voteYes(escrow);
       await dao.connect(user4).voteYes(escrow);
@@ -192,6 +213,26 @@ describe("EscrowDAO", function() {
       expect(no).to.equal(3);
     });
 
+    it("should increase arbitration attempts for members", async function() {
+      const user6 = await ethers.getSigner(5);
+      const addr6 = user6.address;
+      await dao.connect(user6).join();
+
+      const user7 = await ethers.getSigner(6);
+      const addr7 = user7.address;
+      await dao.connect(user7).join();
+
+      await dao.connect(user3).voteNo(escrow);
+      await dao.connect(user4).voteNo(escrow);
+      await dao.connect(user5).voteNo(escrow);
+
+      assert.equal(parseInt(await dao.attempts(addr3)), 1);
+      assert.equal(parseInt(await dao.attempts(addr4)), 1);
+      assert.equal(parseInt(await dao.attempts(addr5)), 1);
+      assert.equal(parseInt(await dao.attempts(addr6)), 0);
+      assert.equal(parseInt(await dao.attempts(addr7)), 0);
+    });
+
     it("should deny escrow after 3 no votes", async function() {
       await dao.connect(user3).voteNo(escrow);
       await dao.connect(user4).voteNo(escrow);
@@ -208,6 +249,58 @@ describe("EscrowDAO", function() {
       await expect(dao.connect(user4).voteNo(escrow))
       .to.emit(dao, 'MemberVoted')
       .withArgs(addr4, escrow, 2);
+    });
+  });
+
+  describe("distributeRewards()", async function() {
+    beforeEach(async() => {
+      await dao.createEscrow(addr2, { value: deposit });
+      escrow = await dao.escrows(0);
+
+      const escrowFactory = await ethers.getContractFactory("Escrow");
+      escrowContract = escrowFactory.attach(escrow);
+
+      await dao.connect(user3).join();
+      await dao.connect(user4).join();
+      await dao.connect(user5).join();
+    });
+
+    it("should distribute rewards to majority voters", async function() {
+      await dao.connect(user3).voteYes(escrow);
+      await dao.connect(user4).voteYes(escrow);
+      await dao.connect(user5).voteYes(escrow);
+
+      const balance3 = parseInt(await dao.balances(addr3));
+      const balance4 = parseInt(await dao.balances(addr4));
+      const balance5 = parseInt(await dao.balances(addr5));
+
+      const expected = parseInt(ethers.BigNumber.from(deposit).div(60));
+
+      assert.equal(balance3, expected);
+      assert.equal(balance4, expected);
+      assert.equal(balance5, expected);
+    });
+
+    it("should track winning arbitrations for voting members", async function() {
+      const user6 = await ethers.getSigner(5);
+      const addr6 = user6.address;
+      await dao.connect(user6).join();
+      await dao.connect(user6).voteNo(escrow);
+
+      const user7 = await ethers.getSigner(6);
+      const addr7 = user7.address;
+      await dao.connect(user7).join();
+      await dao.connect(user7).voteNo(escrow);
+
+      await dao.connect(user3).voteYes(escrow);
+      await dao.connect(user4).voteYes(escrow);
+      await dao.connect(user5).voteYes(escrow);
+
+      assert.equal(parseInt(await dao.wins(addr3)), 1);
+      assert.equal(parseInt(await dao.wins(addr4)), 1);
+      assert.equal(parseInt(await dao.wins(addr5)), 1);
+      assert.equal(parseInt(await dao.wins(addr6)), 0);
+      assert.equal(parseInt(await dao.wins(addr7)), 0);
     });
   });
 

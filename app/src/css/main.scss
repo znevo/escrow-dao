@@ -1,3 +1,5 @@
+$tablet: 850px;
+
 @import '~bulma/bulma.sass';
 
 .onboarding.install-metamask,
@@ -7,4 +9,25 @@
 
 td {
     vertical-align: middle !important;
+}
+
+.table td, .table th {
+    border: 1px solid #f5f5f5;
+    border-width: 0 0 2px;
+    padding: 0.5em 0em;
+}
+
+@include until($tablet) {
+    .reverse-stack {
+        display: flex;
+        flex-direction: column-reverse;
+    }
+
+    .reverse-stack .box:nth-child(1) {
+        margin-bottom: 0;
+    }
+
+    .reverse-stack .box:nth-child(2) {
+        margin-bottom: 1.5rem;
+    }
 }

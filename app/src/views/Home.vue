@@ -84,6 +84,9 @@
 
         <div class="columns">
             <div class="column">
+
+              <div class="reverse-stack">
+
                 <div class="box">
 
                   <h3 class="title is-size-3">New Contracts</h3>
@@ -111,6 +114,43 @@
                   </div>
 
                 </div>
+
+                <div class="box">
+
+                  <h3 class="title is-size-3">My Rewards</h3>
+
+                  <hr>
+
+                  <table width="100%" class="table" v-if="stats">
+                    <tr>
+                      <td class="is-size-6">Total Arbitrations</td>
+                      <td align="right" class="is-size-6">{{ stats.rewards.attempts }} Escrows</td>
+                    </tr>
+                    <tr>
+                      <td class="is-size-6">Winning Arbitrations</td>
+                      <td align="right" class="is-size-6">{{ stats.rewards.wins }} Escrows</td>
+                    </tr>
+                    <tr>
+                      <td class="is-size-6">Rewards Balance</td>
+                      <td align="right" class="is-size-6">
+                        {{ stats.rewards.balance }}
+                        <i class="fa-brands fa-ethereum"></i></td>
+                    </tr>
+                  </table>
+
+                  <div class="control">
+                    <button class="button is-success is-fullwidth mt-5"
+                      @click="withdraw()"
+                      :disabled="! stats.rewards.balance"
+                    >
+                        Withdraw
+                    </button>
+                  </div>
+
+                </div>
+
+              </div>
+
             </div>
             <div class="column">
                 <div class="box">
@@ -219,7 +259,7 @@ export default {
     this.provider = new ethers.providers.Web3Provider(this.metamask.provider);
     const signer = this.provider.getSigner();
 
-    this.dao = new ethers.Contract('0xE0e633D1a78Cf59b10Adf01d64FBA7A365A2Ea97', EscrowDAO.abi, signer);
+    this.dao = new ethers.Contract('0xB6634Af9E27Ab8ebf77b3396334eDBfE55a29722', EscrowDAO.abi, signer);
     this.dao = this.dao.connect(signer);
     window.dao = this.dao;
 
@@ -235,6 +275,11 @@ export default {
       volume: utils.formatEther(await this.dao.volume()),
       escrows: escrows.length,
       members: members.length,
+      rewards: {
+        attempts: await this.dao.attempts(this.metamask.user),
+        wins: await this.dao.wins(this.metamask.user),
+        balance: this.precision(await this.dao.balances(this.metamask.user)),
+      },
     };
 
     this.dao.on('EscrowCreated', (escrow) => {
@@ -281,11 +326,23 @@ export default {
         || (this.metamask.user.toLowerCase() == contract.beneficiary.toLowerCase());
     },
 
+    precision(num) {
+      return parseFloat(
+        parseFloat(
+          utils.formatEther(num)
+        ).toFixed(5)
+      );
+    },
+
     async createEscrow() {
       await this.dao.createEscrow(
         this.form.beneficiary,
         { value: utils.parseEther(this.form.value) }
       );
+    },
+
+    async withdraw() {
+      await this.dao.withdraw();
     },
 
     async approve(contract) {

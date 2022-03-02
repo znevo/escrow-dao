@@ -7,12 +7,16 @@ import "./Escrow.sol";
 contract EscrowDAO {
     address[] public members;
     address payable[] public escrows;
+    mapping(address => uint) fees;
+    mapping(address => uint) public balances;
+    mapping(address => uint) public attempts;
+    mapping(address => uint) public wins;
     uint public volume;
 
     enum Vote { PENDING, YES, NO }
     struct Ballot {
-      uint yesVotes;
-      uint noVotes;
+      address[] yesVotes;
+      address[] noVotes;
       mapping(address => Vote) votes;
     }
     mapping(address => Ballot) ballots;
@@ -45,10 +49,11 @@ contract EscrowDAO {
     function createEscrow(address payable _beneficiary) external payable {
       Escrow escrowContract = new Escrow(payable(msg.sender), address(this), _beneficiary);
       address payable escrowAddress = payable(address(escrowContract));
-      escrowAddress.transfer((msg.value / 10) * 9);
       escrows.push(escrowAddress);
-      emit EscrowCreated(escrowAddress);
+      escrowAddress.transfer((msg.value / 10) * 9);
+      fees[escrowAddress] = msg.value / 10;
       volume += msg.value;
+      emit EscrowCreated(escrowAddress);
     }
 
     function getEscrows() external view returns(address payable[] memory) {
@@ -65,36 +70,54 @@ contract EscrowDAO {
 
     function voteYes(address payable _escrow) external canVote(_escrow) {
       ballots[_escrow].votes[msg.sender] = Vote.YES;
-      ballots[_escrow].yesVotes += 1;
+      ballots[_escrow].yesVotes.push(msg.sender);
+      attempts[msg.sender] += 1;
 
       emit MemberVoted(msg.sender, _escrow, Vote.YES);
 
-      if ( ballots[_escrow].yesVotes == 3 ) {
+      if ( ballots[_escrow].yesVotes.length == 3 ) {
           Escrow(_escrow).approve();
+          distributeRewards(_escrow, ballots[_escrow].yesVotes);
       }
     }
 
     function voteNo(address payable _escrow) external canVote(_escrow) {
       ballots[_escrow].votes[msg.sender] = Vote.NO;
-      ballots[_escrow].noVotes += 1;
+      ballots[_escrow].noVotes.push(msg.sender);
+      attempts[msg.sender] += 1;
 
       emit MemberVoted(msg.sender, _escrow, Vote.NO);
 
-      if ( ballots[_escrow].noVotes == 3 ) {
+      if ( ballots[_escrow].noVotes.length == 3 ) {
           Escrow(_escrow).deny();
+          distributeRewards(_escrow, ballots[_escrow].noVotes);
       }
     }
 
+    function distributeRewards(address _escrow, address[] memory _members) private {
+      for(uint i = 0; i < _members.length; i++) {
+        balances[_members[i]] += fees[_escrow] / 6;
+        wins[_members[i]] += 1;
+      }
+    }
+
+    function withdraw() external {
+      require(balances[msg.sender] > 0);
+      uint amount = balances[msg.sender];
+      balances[msg.sender] = 0;
+      payable(msg.sender).transfer(amount);
+    }
+
     function getVotes(address _escrow) external view returns(uint _yes, uint _no) {
-      return (ballots[_escrow].yesVotes, ballots[_escrow].noVotes);
+      return (ballots[_escrow].yesVotes.length, ballots[_escrow].noVotes.length);
     }
 
     function getYesVotes(address _escrow) external view returns(uint) {
-      return ballots[_escrow].yesVotes;
+      return ballots[_escrow].yesVotes.length;
     }
 
     function getNoVotes(address _escrow) external view returns(uint) {
-      return ballots[_escrow].noVotes;
+      return ballots[_escrow].noVotes.length;
     }
 
     function getVote(address _escrow, address _member) external view returns(Vote) {
